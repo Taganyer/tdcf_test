@@ -1,0 +1,21 @@
+#pragma once
+
+#include <tlog.h>
+
+#define __USE_TLOG__
+
+#define LOG_FORMAT(logger, rank, fmt, ...) tlog_format(logger, rank, fmt, ##__VA_ARGS__)
+
+#define GLOBAL_LOGGER(rank, fmt, ...) LOG_FORMAT("global_logger", rank, fmt, ##__VA_ARGS__)
+
+#define TRACE(fmt, ...) GLOBAL_LOGGER(TLogRank::TRACE, fmt, ##__VA_ARGS__)
+
+#define DEBUG(fmt, ...) GLOBAL_LOGGER(TLogRank::DEBUG, fmt, ##__VA_ARGS__)
+
+#define INFO(fmt, ...) GLOBAL_LOGGER(TLogRank::INFO, fmt, ##__VA_ARGS__)
+
+#define WARN(fmt, ...) GLOBAL_LOGGER(TLogRank::WARN, fmt, ##__VA_ARGS__)
+
+#define ERROR(fmt, ...) GLOBAL_LOGGER(TLogRank::ERROR, fmt, ##__VA_ARGS__)
+
+#define FATAL(fmt, ...) GLOBAL_LOGGER(TLogRank::FATAL, fmt, ##__VA_ARGS__)
