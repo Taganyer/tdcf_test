@@ -4,6 +4,14 @@
 
 #define __USE_TLOG__
 
+#define PROJECT_PATH "@PROJECT_SOURCE_DIR@"
+
+#define LOG_INIT tlog_init(PROJECT_PATH "/resource/log_test.properties");
+
+#define LOG_FLUSH tlog_flush();
+
+#define LOG_DESTROY tlog_destroy();
+
 #define LOG_FORMAT(logger, rank, fmt, ...) tlog_format(logger, rank, fmt, ##__VA_ARGS__)
 
 #define GLOBAL_LOGGER(rank, fmt, ...) LOG_FORMAT("global_logger", rank, fmt, ##__VA_ARGS__)

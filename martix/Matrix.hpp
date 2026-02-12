@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "../log.hpp"
+#include <fstream>
 #include <memory>
 #include <cassert>
 #include <cstring>
@@ -230,7 +232,7 @@ public:
         return result;
     };
 
-    friend Matrix SUMMA2D_reduce(const Matrix_Array_3D &mats) {
+    friend Matrix_Array_2D SUMMA2D_reduce(const Matrix_Array_3D &mats) {
         size_t m = mats[0].size(), n = mats[0][0].size();
         Matrix_Array_2D ret(m);
 
@@ -248,7 +250,31 @@ public:
             }
         }
 
-        return merge(ret);
+        return ret;
+    };
+
+    friend uint64_t serialize_len1D(const Matrix_Array_1D &mat) {
+        uint64_t size = 0;
+        for (auto& v: mat) {
+            size += v.serialize_len();
+        }
+        return size;
+    };
+
+    friend uint64_t serialize_len2D(const Matrix_Array_2D &mat) {
+        uint64_t size = 0;
+        for (auto& v: mat) {
+            size += serialize_len1D(v);
+        }
+        return size;
+    };
+
+    friend uint64_t serialize_len3D(const Matrix_Array_3D &mat) {
+        uint64_t size = 0;
+        for (auto& v: mat) {
+            size += serialize_len2D(v);
+        }
+        return size;
     };
 
 private:
@@ -278,7 +304,7 @@ bool generate_random_matrix(const std::string &file_path,
 
         std::ofstream out_file(file_path);
         if (!out_file.is_open()) {
-            std::cerr << "错误：无法打开文件 " << file_path << std::endl;
+            ERROR("错误：无法打开文件 %s", file_path.data());
             return false;
         }
 
@@ -295,10 +321,10 @@ bool generate_random_matrix(const std::string &file_path,
         }
 
         out_file.close();
-        std::cout << "成功生成矩阵文件：" << file_path << std::endl;
+        INFO("成功生成矩阵文件：%s", file_path.data());
         return true;
     } catch (const std::exception &e) {
-        std::cerr << "生成矩阵失败：" << e.what() << std::endl;
+        ERROR("生成矩阵失败：%s", e.what());
         return false;
     }
 }

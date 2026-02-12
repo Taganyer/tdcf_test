@@ -4,4 +4,6 @@
 
 #pragma once
 
-void martix_test();
+void SUMMA2D_test();
+
+void distribution_SUMMA2D_test();

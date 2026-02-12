@@ -2,7 +2,6 @@
 // Created by taganyer on 2026/2/10.
 //
 #include "test.hpp"
-#include "log.hpp"
 #include "LogRules.hpp"
 #include "../manage/Manager.hpp"
 
@@ -59,16 +58,9 @@ void log_test() {
     star->add_sub_cluster(std::move(ring));
     star->add_sub_cluster(std::move(dbt));
 
-#ifdef __USE_TLOG__
-    tlog_init("/home/taganyer/CLionProjects/tdcf_test/resource/log_test.properties");
-#endif
-
     star->root_init();
     star->start();
 
     star.reset();
     Communicator::clear_comm();
-#ifdef __USE_TLOG__
-    tlog_destroy();
-#endif
 };

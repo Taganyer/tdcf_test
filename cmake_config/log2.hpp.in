@@ -2,6 +2,14 @@
 
 #include <cstdio>
 
+#define PROJECT_PATH "@PROJECT_SOURCE_DIR@"
+
+#define LOG_INIT
+
+#define LOG_FLUSH
+
+#define LOG_DESTROY
+
 #define GLOBAL_LOGGER(fmt, ...) std::printf(fmt, ##__VA_ARGS__)
 
 #define TRACE(fmt, ...) GLOBAL_LOGGER(fmt, ##__VA_ARGS__)

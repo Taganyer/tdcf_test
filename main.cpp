@@ -1,6 +1,13 @@
+#include "log.hpp"
 #include "log_test/test.hpp"
+#include "martix/test.hpp"
 
 int main() {
-    log_test();
+    LOG_INIT
+
+    SUMMA2D_test();
+    // distribution_SUMMA2D_test();
+
+    LOG_DESTROY
     return 0;
 }

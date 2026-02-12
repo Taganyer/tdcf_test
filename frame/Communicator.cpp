@@ -191,7 +191,7 @@ Communicator::Msg Communicator::create_msg(ID receiver, const tdcf::Message &mes
     assert(ability > 0);
 
     uint64_t bytes = message.serialize_size() + (data ? data->serialize_size() : 0);
-    double cost_sec = (double) bytes / ability;
+    double cost_sec = static_cast<double>(bytes) / ability;
     auto cost_duration = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::duration<double>(cost_sec)
     );

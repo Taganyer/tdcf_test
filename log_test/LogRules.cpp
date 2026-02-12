@@ -4,7 +4,7 @@
 
 #include "LogRules.hpp"
 #include "LogData.hpp"
-#include "log.hpp"
+#include "../log.hpp"
 
 
 void LogRules::store(Processor &processor, const tdcf::DataPtr &data) {

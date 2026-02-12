@@ -17,25 +17,22 @@ message(STATUS "Header files: ${HEADER_LIST}")
 
 message(STATUS "Source files: ${SRC_LIST}")
 
-
-
+unset(USE_TLOG CACHE)
 find_package(tlog QUIET)
 if (tlog_FOUND)
     message(STATUS "tlog found, using tlog for logging")
-    configure_file("${PROJECT_SOURCE_DIR}/cmake_config/log1.hpp.in" "${PROJECT_SOURCE_DIR}/log_test/log.hpp")
-    unset(USE_TLOG CACHE)
+    configure_file("${PROJECT_SOURCE_DIR}/cmake_config/log1.hpp.in" "${PROJECT_SOURCE_DIR}/log.hpp")
     option(USE_TLOG "Enable tlog library instead of printf for logging" ON)
 else ()
     message(WARNING "tlog not found (USE_TLOG=ON but library missing), fallback to printf")
-    configure_file("${PROJECT_SOURCE_DIR}/cmake_config/log2.hpp.in" "${PROJECT_SOURCE_DIR}/log_test/log.hpp")
-    unset(USE_TLOG CACHE)
+    configure_file("${PROJECT_SOURCE_DIR}/cmake_config/log2.hpp.in" "${PROJECT_SOURCE_DIR}/log.hpp")
     option(USE_TLOG "Enable tlog library instead of printf for logging" OFF)
 endif ()
 
 
 find_package(tdcf REQUIRED)
 
-add_executable(${PROJECT_NAME} ${HEADER_LIST} ${SRC_LIST} log_test/log.hpp)
+add_executable(${PROJECT_NAME} ${HEADER_LIST} ${SRC_LIST} log.hpp)
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE tdcf

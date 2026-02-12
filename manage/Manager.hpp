@@ -49,7 +49,7 @@ private:
 
     tdcf::StageNum _type = 0;
 
-    std::atomic<bool> _running;
+    std::atomic<bool> _running = false;
 
     uint32_t _total = 1;
 
