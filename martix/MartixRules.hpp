@@ -5,7 +5,6 @@
 #pragma once
 
 #include <mutex>
-#include <condition_variable>
 #include "Matrix.hpp"
 #include "../frame/ProcessingRules.hpp"
 
@@ -105,8 +104,6 @@ private:
     RulesID _id;
 
     std::mutex _mutex;
-
-    std::condition_variable _cond;
 
     Martix2DPtr _scatter_v1, _scatter_v2;
 

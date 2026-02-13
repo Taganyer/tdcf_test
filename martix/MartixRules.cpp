@@ -93,6 +93,7 @@ void ReduceMartixRules::reduce(Processor &processor, tdcf::ProcessorEventMark ma
     auto &d = get_data(processor);
     d.re = std::make_unique<tdcf::ProcessorEventMark>(mark);
     d.reduce_size = target.size();
+    assert(d.reduce_size);
 }
 
 void ReduceMartixRules::scatter(Processor &processor, tdcf::ProcessorEventMark mark,
@@ -124,22 +125,17 @@ bool ReduceMartixRules::get_events(Processor &processor, tdcf::Processor::EventQ
 
         std::lock_guard l(_mutex);
         _subs.emplace_back(std::move(ans));
-        _cond.notify_one();
     } else if (re) {
         MARTIX::Matrix_Array_3D v;
         {
-            std::unique_lock l(_mutex);
-            _cond.wait(l, [this] {
-                return !_subs.empty();
-            });
-            INFO("%s, %u, %lu", __PRETTY_FUNCTION__, reduce_size, _subs.size());
-            if (reduce_size > _subs.size()) reduce_size = _subs.size();
+            std::lock_guard l(_mutex);
+            assert(reduce_size <= _subs.size());
             for (uint32_t i = 0; i < reduce_size; ++i) {
                 v.emplace_back(std::move(_subs.back()));
                 _subs.pop_back();
             }
         }
-        auto ans = SUMMA2D_reduce(v);
+        auto ans = v.size() != 1 ? SUMMA2D_reduce(v) : std::move(v.front());
 
         auto ptr = std::make_shared<MatrixData>(serialize_len2D(ans));
         queue.emplace(tdcf::ProcessorEvent {
@@ -150,7 +146,6 @@ bool ReduceMartixRules::get_events(Processor &processor, tdcf::Processor::EventQ
 
         std::lock_guard l(_mutex);
         _subs.emplace_back(std::move(ans));
-        _cond.notify_one();
     }
 
     return true;
