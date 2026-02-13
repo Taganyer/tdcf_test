@@ -5,6 +5,7 @@
 #pragma once
 
 #include <mutex>
+#include <condition_variable>
 #include "Matrix.hpp"
 #include "../frame/ProcessingRules.hpp"
 
@@ -97,7 +98,6 @@ private:
         EventPtr ac;
         EventPtr re;
         uint32_t reduce_size = 0;
-        Martix2DPtr sub_ans;
     };
 
     Data &get_data(Processor &processor);
@@ -105,6 +105,8 @@ private:
     RulesID _id;
 
     std::mutex _mutex;
+
+    std::condition_variable _cond;
 
     Martix2DPtr _scatter_v1, _scatter_v2;
 

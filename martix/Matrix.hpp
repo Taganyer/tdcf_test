@@ -321,7 +321,7 @@ bool generate_random_matrix(const std::string &file_path,
         }
 
         out_file.close();
-        INFO("成功生成矩阵文件：%s", file_path.data());
+        DEBUG("成功生成矩阵文件：%s", file_path.data());
         return true;
     } catch (const std::exception &e) {
         ERROR("生成矩阵失败：%s", e.what());

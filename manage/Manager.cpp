@@ -140,7 +140,7 @@ void Manager::root() {
 
     root->start_cluster(set, false);
 
-    ERROR("%s ROOT[%u] start", __PRETTY_FUNCTION__, _id->guid());
+    DEBUG("%s ROOT[%u] start", __PRETTY_FUNCTION__, _id->guid());
 
     auto flag = tdcf::StatusFlag::Success;
 
@@ -150,9 +150,9 @@ void Manager::root() {
         flag = root->handle_a_loop();
     }
 
-    ERROR("%s ROOT[%u] start end_cluster: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
+    DEBUG("%s ROOT[%u] start end_cluster: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
     flag = root->end_cluster();
-    ERROR("%s ROOT[%u] end: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
+    DEBUG("%s ROOT[%u] end: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
 }
 
 void Manager::node_root() {
@@ -165,7 +165,7 @@ void Manager::node_root() {
 
     node_root->start_cluster(set, true);
 
-    ERROR("%s NODE_ROOT[%u] start", __PRETTY_FUNCTION__, _id->guid());
+    DEBUG("%s NODE_ROOT[%u] start", __PRETTY_FUNCTION__, _id->guid());
 
     auto flag = tdcf::StatusFlag::Success;
 
@@ -180,22 +180,22 @@ void Manager::node_root() {
         }
     }
 
-    ERROR("%s NODE_ROOT[%u] start end_cluster: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
+    DEBUG("%s NODE_ROOT[%u] start end_cluster: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
     flag = node_root->end_cluster();
-    ERROR("%s NODE_ROOT[%u] end: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
+    DEBUG("%s NODE_ROOT[%u] end: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
 }
 
 void Manager::pure_node() {
     auto node = create_node();
     node.start_node();
-    ERROR("%s NODE[%u] start", __PRETTY_FUNCTION__, _id->guid());
+    DEBUG("%s NODE[%u] start", __PRETTY_FUNCTION__, _id->guid());
 
     auto flag = tdcf::StatusFlag::Success;
     while (flag == tdcf::StatusFlag::Success) {
         flag = node.handle_a_loop();
     }
 
-    ERROR("%s NODE[%u] end: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
+    DEBUG("%s NODE[%u] end: %s", __PRETTY_FUNCTION__, _id->guid(), tdcf::status_flag_name(flag));
 }
 
 void Manager::init(uint32_t &id, std::vector<std::vector<int64_t> > &comm_matrix,

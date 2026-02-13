@@ -22,21 +22,24 @@ static double measure_time_ms(Func &&func) {
     return std::chrono::duration<double, std::milli>(end - start).count();
 }
 
+static std::pair<MARTIX, MARTIX> get_random_martix(int N) {
+    generate_random_matrix<MARTIX_TYPE>(PROJECT_PATH "/resource/matrix1.txt", N, N, 0, 10);
+    generate_random_matrix<MARTIX_TYPE>(PROJECT_PATH "/resource/matrix2.txt", N, N, 0, 10);
+
+    auto in1 = ifstream(PROJECT_PATH "/resource/matrix1.txt"),
+            in2 = ifstream(PROJECT_PATH "/resource/matrix2.txt");
+
+    return std::pair<MARTIX, MARTIX>(in1, in2);
+}
+
 void SUMMA2D_test() {
-    using Type = int;
     constexpr int N = 1000;
-    generate_random_matrix<Type>(PROJECT_PATH "/resource/matrix1.txt", N, N, 0, 10);
-    generate_random_matrix<Type>(PROJECT_PATH "/resource/matrix2.txt", N, N, 0, 10);
 
-    auto in1 = ifstream("../resource/matrix1.txt"), in2 = ifstream("../resource/matrix2.txt");
+    auto [fst, snd] = get_random_martix(N);
 
-    Matrix<Type> a(in1), b(in2);
+    auto &a = fst, &b = snd;
 
-    in1.close();
-    in2.close();
-
-
-    Matrix<Type> ans1, ans2;
+    MARTIX ans1, ans2;
 
     auto cost1 = measure_time_ms([&] {
         ans1 = a * b;
@@ -48,11 +51,11 @@ void SUMMA2D_test() {
     auto cost2 = measure_time_ms([&] {
         constexpr int n = 5;
 
-        auto [fst, snd] = SUMMA2D_scatter(a, b, n);
+        auto [fst_, snd_] = SUMMA2D_scatter(a, b, n);
 
-        auto &left = fst, &right = snd;
+        auto &left = fst_, &right = snd_;
 
-        Matrix<Type>::Matrix_Array_3D obj(n);
+        MARTIX::Matrix_Array_3D obj(n);
 
         vector<thread> threads;
 
@@ -87,9 +90,9 @@ static ManagerPtr create(uint64_t &id, MARTIX a, MARTIX b,
         auto cmp = compare(m, *result);
         if (!cmp) {
             auto out = ofstream(PROJECT_PATH "/resource/error.txt");
-            ERROR("distribution_SUMMA2D wrong ans cost %.02lf ms", cost);
+            ERROR("distribution_SUMMA2D result size:[%lu*%lu] wrong ans cost %.02lf ms", m.row(), m.col(), cost);
         } else {
-            INFO("distribution_SUMMA2D cost %.02lf ms", cost);
+            INFO("distribution_SUMMA2D result size:[%lu*%lu] cost %.02lf ms", m.row(), m.col(), cost);
         }
     });
 
@@ -105,34 +108,43 @@ static ManagerPtr create(uint64_t &id, MARTIX a, MARTIX b,
     return ptr;
 }
 
+static const char *get_topo_name(tdcf::StageNum topo_type) {
+    constexpr const char *names[] {
+        "Star",
+        "Ring",
+        "DBT",
+    };
+
+    return names[topo_type - 1];
+}
+
 void distribution_SUMMA2D_test() {
-    constexpr int N = 1000;
-    generate_random_matrix<MARTIX_TYPE>(PROJECT_PATH "/resource/matrix1.txt", N, N, 0, 10);
-    generate_random_matrix<MARTIX_TYPE>(PROJECT_PATH "/resource/matrix2.txt", N, N, 0, 10);
-    auto in1 = ifstream("../resource/matrix1.txt"), in2 = ifstream("../resource/matrix2.txt");
+    constexpr int N = 100;
+    auto [fst, snd] = get_random_martix(N);
 
-    Matrix<MARTIX_TYPE> a(in1), b(in2);
+    auto &a = fst, &b = snd;
 
-    in1.close();
-    in2.close();
-
-    Matrix<MARTIX_TYPE> ans1;
+    MARTIX ans;
 
     auto cost1 = measure_time_ms([&] {
-        ans1 = a * b;
+        ans = a * b;
     });
 
-    INFO("common multiply cost %.02lf ms", cost1);
+    INFO("common multiply result size:[%lu*%lu] cost %.02lf ms", ans.row(), ans.col(), cost1);
 
     uint64_t rule_id = 0;
     TimePoint start;
-    auto star = create(rule_id, std::move(a), std::move(b), &ans1, &start,
-                       tdcf::ClusterType::star, 1LL << 33, 1LL << 32, 4);
-    star->root_init();
+
+    tdcf::StageNum topo_type = tdcf::ClusterType::dbt;
+    int nodes = 4;
+    auto manager = create(rule_id, std::move(a), std::move(b), &ans, &start,
+                          topo_type, 1LL << 33, 1LL << 32, nodes);
+    manager->root_init();
+    INFO("distribution_SUMMA2D_test: %s total %d threads.", get_topo_name(topo_type), nodes + 1);
 
     start = std::chrono::high_resolution_clock::now();
-    star->start();
+    manager->start();
 
-    star.reset();
+    manager.reset();
     Communicator::clear_comm();
 }

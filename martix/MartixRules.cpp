@@ -102,8 +102,8 @@ void ReduceMartixRules::scatter(Processor &processor, tdcf::ProcessorEventMark m
 
 bool ReduceMartixRules::get_events(Processor &processor, tdcf::Processor::EventQueue &queue) {
     assert(processor.get_identity()->mod() != Identity::NODE_ROOT);
-    auto &d = get_data(processor);
-    if (d.ac) {
+    auto &[ac, re, reduce_size] = get_data(processor);
+    if (ac) {
         MARTIX::Matrix_Array_1D v1, v2;
         {
             std::lock_guard l(_mutex);
@@ -117,19 +117,24 @@ bool ReduceMartixRules::get_events(Processor &processor, tdcf::Processor::EventQ
 
         auto ptr = std::make_shared<MatrixData>(serialize_len2D(ans));
         queue.emplace(tdcf::ProcessorEvent {
-            tdcf::ProcessorEvent::Acquire, *d.ac,
+            tdcf::ProcessorEvent::Acquire, *ac,
             tdcf::DataSet { std::move(ptr) }
         });
-        d.ac.reset();
+        ac.reset();
 
         std::lock_guard l(_mutex);
         _subs.emplace_back(std::move(ans));
-    } else if (d.re) {
+        _cond.notify_one();
+    } else if (re) {
         MARTIX::Matrix_Array_3D v;
         {
-            std::lock_guard l(_mutex);
-            assert(_subs.size() >= d.reduce_size);
-            for (uint32_t i = 0; i < d.reduce_size; ++i) {
+            std::unique_lock l(_mutex);
+            _cond.wait(l, [this] {
+                return !_subs.empty();
+            });
+            INFO("%s, %u, %lu", __PRETTY_FUNCTION__, reduce_size, _subs.size());
+            if (reduce_size > _subs.size()) reduce_size = _subs.size();
+            for (uint32_t i = 0; i < reduce_size; ++i) {
                 v.emplace_back(std::move(_subs.back()));
                 _subs.pop_back();
             }
@@ -138,13 +143,14 @@ bool ReduceMartixRules::get_events(Processor &processor, tdcf::Processor::EventQ
 
         auto ptr = std::make_shared<MatrixData>(serialize_len2D(ans));
         queue.emplace(tdcf::ProcessorEvent {
-            tdcf::ProcessorEvent::Reduce, *d.re,
+            tdcf::ProcessorEvent::Reduce, *re,
             tdcf::DataSet { std::move(ptr) }
         });
-        d.re.reset();
+        re.reset();
 
         std::lock_guard l(_mutex);
         _subs.emplace_back(std::move(ans));
+        _cond.notify_one();
     }
 
     return true;
