@@ -4,6 +4,4 @@
 
 #pragma once
 
-void SUMMA2D_test();
-
-void distribution_SUMMA2D_test();
+void distribution_SUMMA2D_test(int N, int nodes, int times, bool test);

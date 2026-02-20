@@ -5,7 +5,6 @@
 #include "Matrix.hpp"
 #include <chrono>
 #include <fstream>
-#include <iostream>
 #include <thread>
 #include "../log.hpp"
 #include "MartixRules.hpp"
@@ -32,73 +31,8 @@ static std::pair<MARTIX, MARTIX> get_random_martix(int N) {
     return std::pair<MARTIX, MARTIX>(in1, in2);
 }
 
-void SUMMA2D_test() {
-    constexpr int N = 1000;
-
-    auto [fst, snd] = get_random_martix(N);
-
-    auto &a = fst, &b = snd;
-
-    MARTIX ans1, ans2;
-
-    auto cost1 = measure_time_ms([&] {
-        ans1 = a * b;
-    });
-
-    INFO("flag1: %.02lf ms", cost1);
-    // ans1.show(cout);
-
-    auto cost2 = measure_time_ms([&] {
-        constexpr int n = 5;
-
-        auto [fst_, snd_] = SUMMA2D_scatter(a, b, n);
-
-        auto &left = fst_, &right = snd_;
-
-        MARTIX::Matrix_Array_3D obj(n);
-
-        vector<thread> threads;
-
-        for (int i = 0; i < n; ++i) {
-            threads.emplace_back([&, i] {
-                obj[i] = SUMMA2D_multiply(left[i], right[i]);
-            });
-        }
-
-        for (auto &t: threads) t.join();
-
-        ans2 = merge(SUMMA2D_reduce(obj));
-    });
-
-    // ans2.show(cout);
-    INFO("flag2: %.02lf ms", cost2);
-
-    INFO("%s", (compare(ans1, ans2) ? "true" : "false"));
-}
-
-using TimePoint = decltype(std::chrono::high_resolution_clock::now());
-
-static ManagerPtr create(uint64_t &id, MARTIX a, MARTIX b,
-                         const MARTIX *result, TimePoint *start,
-                         tdcf::StageNum topo_type, int64_t intra, int64_t inter, int nodes) {
+static ManagerPtr create_manager(tdcf::StageNum topo_type, int64_t intra, int64_t inter, int nodes) {
     auto ptr = std::make_unique<Manager>(topo_type, intra, inter);
-
-    auto re_rule = std::make_shared<ReduceMartixRules>(++id, [result, start](MARTIX m) {
-        auto end = std::chrono::high_resolution_clock::now();
-        double cost = std::chrono::duration<double, std::milli>(end - *start).count();
-
-        auto cmp = compare(m, *result);
-        if (!cmp) {
-            auto out = ofstream(PROJECT_PATH "/resource/error.txt");
-            ERROR("distribution_SUMMA2D result size:[%lu*%lu] wrong ans cost %.02lf ms", m.row(), m.col(), cost);
-        } else {
-            INFO("distribution_SUMMA2D result size:[%lu*%lu] cost %.02lf ms", m.row(), m.col(), cost);
-        }
-    });
-
-    auto sc_rule = std::make_shared<ScatterMartixRules>(++id, std::move(a), std::move(b), re_rule.get());
-    ptr->add_operation(tdcf::OperationType::Scatter, std::move(sc_rule));
-    ptr->add_operation(tdcf::OperationType::Reduce, std::move(re_rule));
 
     for (int i = 0; i < nodes; ++i) {
         auto sub = std::make_unique<Manager>(topo_type, intra, inter);
@@ -106,6 +40,20 @@ static ManagerPtr create(uint64_t &id, MARTIX a, MARTIX b,
     }
 
     return ptr;
+}
+
+static void add_operation(Manager &manage, uint64_t &id, MARTIX a, MARTIX b,
+                          MARTIX *ans, TimePoint *start, TimePoint *end, double *cost) {
+    auto re_rule = std::make_shared<ReduceMartixRules>(++id, [ans, start, end, cost](MARTIX m) {
+        *end = std::chrono::high_resolution_clock::now();
+        *cost = std::chrono::duration<double, std::milli>(*end - *start).count();
+        *ans = std::move(m);
+    });
+
+    auto sc_rule = std::make_shared<ScatterMartixRules>(++id, std::move(a), std::move(b), start, re_rule.get());
+
+    manage.add_operation(tdcf::OperationType::Scatter, std::move(sc_rule));
+    manage.add_operation(tdcf::OperationType::Reduce, std::move(re_rule));
 }
 
 static const char *get_topo_name(tdcf::StageNum topo_type) {
@@ -118,33 +66,95 @@ static const char *get_topo_name(tdcf::StageNum topo_type) {
     return names[topo_type - 1];
 }
 
-void distribution_SUMMA2D_test() {
-    constexpr int N = 100;
+void distribution_SUMMA2D_test(int N, int nodes, int times, bool test) {
+    assert(N % (nodes + 1) == 0);
+
+    vector<vector<double> > costs(times);
+
     auto [fst, snd] = get_random_martix(N);
 
     auto &a = fst, &b = snd;
+    MARTIX ans1;
 
-    MARTIX ans;
+    if (test) {
+        auto cost1 = measure_time_ms([&] {
+           ans1 = a * b;
+       });
 
-    auto cost1 = measure_time_ms([&] {
-        ans = a * b;
-    });
+        INFO("common multiply result size:[%lu*%lu] cost %.02lf ms", ans1.row(), ans1.col(), cost1);
+    }
 
-    INFO("common multiply result size:[%lu*%lu] cost %.02lf ms", ans.row(), ans.col(), cost1);
+    for (int i = 0; i < times; ++i) {
+        MARTIX ans2;
 
-    uint64_t rule_id = 0;
-    TimePoint start;
+        auto cost2 = measure_time_ms([&] {
+            auto [fst_, snd_] = SUMMA2D_scatter(a, b, nodes + 1);
 
-    tdcf::StageNum topo_type = tdcf::ClusterType::dbt;
-    int nodes = 4;
-    auto manager = create(rule_id, std::move(a), std::move(b), &ans, &start,
-                          topo_type, 1LL << 33, 1LL << 32, nodes);
-    manager->root_init();
-    INFO("distribution_SUMMA2D_test: %s total %d threads.", get_topo_name(topo_type), nodes + 1);
+            auto &left = fst_, &right = snd_;
 
-    start = std::chrono::high_resolution_clock::now();
-    manager->start();
+            MARTIX::Matrix_Array_3D obj(nodes + 1);
 
-    manager.reset();
-    Communicator::clear_comm();
+            vector<thread> threads;
+
+            for (int j = 0; j < nodes + 1; ++j) {
+                threads.emplace_back([&, j] {
+                    obj[j] = SUMMA2D_multiply(left[j], right[j]);
+                });
+            }
+
+            for (auto &t: threads) t.join();
+
+            ans2 = merge(SUMMA2D_reduce(obj));
+        });
+        if (test) assert(compare(ans1, ans2));
+
+        costs[i].push_back(cost2);
+        INFO("thread multiply result size:[%lu*%lu] cost %.02lf ms", ans2.row(), ans2.col(), cost2);
+
+        for (tdcf::StageNum topo_type = tdcf::ClusterType::star; topo_type <= tdcf::ClusterType::dbt; ++topo_type) {
+            MARTIX ans3;
+            uint64_t rule_id = 0;
+            TimePoint start, end;
+            double cost3;
+
+            auto manager = create_manager(topo_type, 1LL << 33, 1LL << 32, nodes);
+
+            add_operation(*manager, rule_id, a.copy(), b.copy(), &ans3, &start, &end, &cost3);
+
+            manager->root_init();
+            INFO("distribution_SUMMA2D_test: %s total %d threads.", get_topo_name(topo_type), nodes + 1);
+
+            manager->start();
+
+            manager.reset();
+            Communicator::clear_comm();
+
+            if (test) assert(compare(ans2, ans3));
+
+            INFO("distribution_SUMMA2D result size:[%lu*%lu] cost %.02lf ms", ans3.row(), ans3.col(), cost3);
+            costs[i].push_back(cost3);
+        }
+    }
+
+    vector<double> avg(costs[0].size());
+    for (auto &v: costs) {
+        for (int i = 0; i < v.size(); ++i) {
+            avg[i] += v[i];
+        }
+    }
+    for (auto &v: avg) {
+        v /= times;
+    }
+
+    assert(avg.size() == 4);
+    FATAL("\nmartix{(%d*%d) * (%d*%d)}\n"
+         "%d threads:(%.02fms)\n"
+         "%d TDCF Star nodes:(%.02fms)\n"
+         "%d TDCF Ring nodes:(%.02fms)\n"
+         "%d TDCF DBT nodes:(%.02fms)",
+         N, N, N, N,
+         nodes + 1, avg[0],
+         nodes + 1, avg[1],
+         nodes + 1, avg[2],
+         nodes + 1, avg[3]);
 }

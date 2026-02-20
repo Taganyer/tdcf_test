@@ -8,8 +8,8 @@ int main() {
     // SUMMA2D_test();
     // distribution_SUMMA2D_test();
 
-    for (int i = 0; i < 10; ++i) {
-        distribution_SUMMA2D_test();
+    for (int i = 200; i <= 1200; i += 200) {
+        distribution_SUMMA2D_test(i, 19, 5, false);
     }
 
     LOG_DESTROY

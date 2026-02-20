@@ -15,6 +15,7 @@ void ScatterMartixRules::store(Processor &processor, const tdcf::DataPtr &data) 
 
 void ScatterMartixRules::acquire(Processor &processor, tdcf::ProcessorEventMark mark) {
     assert(processor.get_identity()->mod() == Identity::ROOT);
+    *_start = std::chrono::high_resolution_clock::now();
     _root.ac = std::make_unique<tdcf::ProcessorEventMark>(mark);
 }
 

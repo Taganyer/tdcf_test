@@ -20,13 +20,17 @@ using Martix2DPtr = std::unique_ptr<MARTIX::Matrix_Array_2D>;
 
 using Martix3DPtr = std::unique_ptr<MARTIX::Matrix_Array_3D>;
 
+using TimePoint = decltype(std::chrono::high_resolution_clock::now());
+
 class ReduceMartixRules;
 
 class ScatterMartixRules : public Rules {
 public:
-    ScatterMartixRules(RulesID id, MARTIX m1, MARTIX m2, ReduceMartixRules *reduce) :
+    ScatterMartixRules(RulesID id, MARTIX m1, MARTIX m2,
+                       TimePoint *start, ReduceMartixRules *reduce) :
         _id(id), _m1(std::make_unique<MARTIX>(std::move(m1))),
-        _m2(std::make_unique<MARTIX>(std::move(m2))), _reduce(reduce) {};
+        _m2(std::make_unique<MARTIX>(std::move(m2))),
+        _start(start), _reduce(reduce) {};
 
     RulesID guid() const override;
 
@@ -62,6 +66,8 @@ private:
     Martix2DPtr _scatter_v1, _scatter_v2;
 
     RootData _root;
+
+    TimePoint *_start;
 
     ReduceMartixRules *_reduce;
 };
